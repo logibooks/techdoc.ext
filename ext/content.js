@@ -108,6 +108,11 @@ function setUiState(state, message) {
 }
 
 function cleanupSelection() {
+  cleanupOverlay();
+  selectedRect = null;
+}
+
+function cleanupOverlay() {
   if (overlay) {
     if (keydownHandler) overlay.removeEventListener("keydown", keydownHandler);
     if (mousedownHandler) overlay.removeEventListener("mousedown", mousedownHandler);
@@ -122,7 +127,6 @@ function cleanupSelection() {
   mousemoveHandler = null;
   mouseupHandler = null;
   selecting = false;
-  selectedRect = null;
 }
 
 function startSelection() {
@@ -202,7 +206,7 @@ function startSelection() {
     if (w < 5 || h < 5) {
       selectedRect = null;
       saveButton.disabled = true;
-      cleanupSelection();
+      cleanupOverlay();
       return;
     }
 
@@ -214,7 +218,7 @@ function startSelection() {
       h: Math.round(h * dpr)
     };
     saveButton.disabled = false;
-    cleanupSelection();
+    cleanupOverlay();
   };
 
   document.addEventListener("mouseup", mouseupHandler);
