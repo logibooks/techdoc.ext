@@ -84,9 +84,9 @@ function ensurePanel() {
 
 function setUiState(state, message) {
   uiState = state;
-  if (message) statusLabel.textContent = message;
 
   if (state === UI_STATE.IDLE) {
+    statusLabel.textContent = message || "Готово";
     startButton.style.display = "inline-flex";
     saveButton.style.display = "none";
     cancelButton.style.display = "none";
@@ -95,17 +95,20 @@ function setUiState(state, message) {
   }
 
   if (state === UI_STATE.SELECTING) {
+    statusLabel.textContent = message || "Выберите область";
     startButton.style.display = "none";
     saveButton.style.display = "inline-flex";
     cancelButton.style.display = "inline-flex";
     saveButton.disabled = !selectedRect;
-    if (!message) {
-      statusLabel.textContent = "Выберите область";
-    }
   }
 }
 
 function cleanupSelection() {
+  cleanupOverlay();
+  selectedRect = null;
+}
+
+function cleanupOverlay() {
   if (overlay) {
     if (keydownHandler) overlay.removeEventListener("keydown", keydownHandler);
     if (mousedownHandler) overlay.removeEventListener("mousedown", mousedownHandler);
@@ -120,7 +123,6 @@ function cleanupSelection() {
   mousemoveHandler = null;
   mouseupHandler = null;
   selecting = false;
-  selectedRect = null;
 }
 
 function startSelection() {
@@ -200,6 +202,7 @@ function startSelection() {
     if (w < 5 || h < 5) {
       selectedRect = null;
       saveButton.disabled = true;
+      cleanupOverlay();
       return;
     }
 
@@ -211,6 +214,7 @@ function startSelection() {
       h: Math.round(h * dpr)
     };
     saveButton.disabled = false;
+    cleanupOverlay();
   };
 
   document.addEventListener("mouseup", mouseupHandler);
