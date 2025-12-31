@@ -277,5 +277,4 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-ensurePanel();
 chrome.runtime.sendMessage({ type: "UI_READY" });
