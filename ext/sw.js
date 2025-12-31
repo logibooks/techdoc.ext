@@ -184,6 +184,14 @@ async function sendMessageWithRetry(tabId, message, attempts = 10) {
     }
     await delay(200);
   }
+  console.warn(
+    "Failed to deliver message to tab after all retry attempts",
+    {
+      tabId,
+      attempts,
+      messageType: message && message.type ? message.type : undefined
+    }
+  );
   return false;
 }
 
