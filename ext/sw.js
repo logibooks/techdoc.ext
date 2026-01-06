@@ -206,6 +206,7 @@ async function reportError(error, tabId) {
   state.targetUrl = null;
   state.uploadPrefix = null;
   state.key = null;
+  state.token = null;
 }
 
 async function syncUiState(tabId) {
