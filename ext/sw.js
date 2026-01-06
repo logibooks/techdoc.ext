@@ -273,7 +273,8 @@ function isAllowed(url) {
 async function apiUpload(target, rect, blob) {
   const fd = new FormData();
   fd.append("rect", JSON.stringify(rect));
-  fd.append("image", blob, `snap-${Date.now()}.png`);
+  // Backend expects an IFormFile named 'file'
+  fd.append("file", blob, `snap-${Date.now()}.png`);
   const headers = {};
   if (state.token) {
     headers["Authorization"] = `Bearer ${state.token}`;
