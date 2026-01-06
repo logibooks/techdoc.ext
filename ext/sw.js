@@ -188,11 +188,11 @@ async function finishSession() {
 
 async function resetState() {
   state.status = "idle";
+  state.tabId = null;
   state.returnUrl = null;
   state.targetUrl = null;
   state.target = null;
   state.token = null;
-  state.tabId = null;
 }
 
 async function reportError(error, tabId) {
