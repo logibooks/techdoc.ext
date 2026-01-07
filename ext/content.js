@@ -300,12 +300,14 @@ function startSelection() {
     // If a previous selection exists and the user presses again, drop
     // the old selection and start a fresh selection from the new point.
     if (selectedRect) {
-      // Remove the persistent selection visuals but keep the panel shown.
+      // Remove the persistent selection visuals.
       cleanupOverlay();
-      // Recreate overlay and box for new selection
-      startSelection();
-      // If startSelection returned early because overlay existed, continue
-      if (!overlay) return;
+      // Restart selection on a clean overlay in a separate tick to avoid
+      // stacking event handlers or recursively re-entering initialization.
+      setTimeout(() => {
+        startSelection();
+      }, 0);
+      return;
     }
 
     selecting = true;
@@ -391,8 +393,13 @@ chrome.runtime.onMessage.addListener((msg) => {
 chrome.runtime.sendMessage({ type: "UI_READY" });
 
 // Expose internal helpers for unit testing
-const isTestEnv = typeof globalThis !== "undefined" && globalThis.process?.env?.NODE_ENV === "test";
-if (isTestEnv && typeof globalThis !== "undefined") {
+const isTestEnv =
+  typeof globalThis !== "undefined" &&
+  (
+    globalThis.__CONTENT_TEST_ENV__ === true ||
+    globalThis.process?.env?.NODE_ENV === "test"
+  );
+if (isTestEnv) {
   globalThis.__contentTestHooks__ = {
     togglePanel,
     ensurePanel,
@@ -403,33 +410,29 @@ if (isTestEnv && typeof globalThis !== "undefined") {
   };
 
   // Expose selectedRect accessors for tests
-  if (typeof globalThis.__contentTestHooks__ !== "undefined") {
-    globalThis.__contentTestHooks__.getSelectedRect = () => selectedRect;
-    globalThis.__contentTestHooks__.setSelectedRect = (r) => { selectedRect = r; };
-  }
+  globalThis.__contentTestHooks__.getSelectedRect = () => selectedRect;
+  globalThis.__contentTestHooks__.setSelectedRect = (r) => { selectedRect = r; };
 
   // Test helper: trigger save flow (as if user clicked Save)
-  if (typeof globalThis.__contentTestHooks__ !== "undefined") {
-    globalThis.__contentTestHooks__.triggerSave = (rect) => {
-      if (rect) selectedRect = rect;
-      // run the same steps as saveButton click
-      const rectToSend = selectedRect;
-      try { cleanupOverlay(); } catch (e) {}
-      togglePanel(false);
-      const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
-      if (raf) {
+  globalThis.__contentTestHooks__.triggerSave = (rect) => {
+    if (rect) selectedRect = rect;
+    // run the same steps as saveButton click
+    const rectToSend = selectedRect;
+    try { cleanupOverlay(); } catch (e) {}
+    togglePanel(false);
+    const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
+    if (raf) {
+      raf(() => {
         raf(() => {
-          raf(() => {
-            try {
-              chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
-            } catch (err) {}
-          });
+          try {
+            chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
+          } catch (err) {}
         });
-      } else {
-        setTimeout(() => {
-          try { chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend }); } catch (err) {}
-        }, 150);
-      }
-    };
-  }
+      });
+    } else {
+      setTimeout(() => {
+        try { chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend }); } catch (err) {}
+      }, 150);
+    }
+  };
 }

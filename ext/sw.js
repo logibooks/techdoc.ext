@@ -266,20 +266,14 @@ async function resetState() {
 }
 
 async function reportError(error, tabId) {
-  // STATE: any → idle
+  // STATE: any → idle (via resetState)
   // Error occurred, show error message and reset all session data
   console.error(error);
   const message = error instanceof Error ? error.message : "Неизвестная ошибка";
   if (tabId !== null && tabId !== undefined) {
     await sendMessageWithRetry(tabId, { type: "SHOW_ERROR", message });
   }
-  // Reset to idle state directly (not via resetState to avoid duplication)
-  state.status = "idle";
-  state.tabId = null;
-  state.returnUrl = null;
-  state.targetUrl = null;
-  state.target = null;
-  state.token = null;
+  await resetState();  // → idle state
 }
 
 async function syncUiState(tabId) {
@@ -444,8 +438,17 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-// Expose helpers for Jest without emitting real exports in production code.
-const isTestEnv = typeof globalThis !== "undefined" && globalThis.process?.env?.NODE_ENV === "test";
+// Expose helpers for Jest / browser-like tests without emitting real exports in production code.
+const isTestEnv =
+  typeof globalThis !== "undefined" &&
+  (
+    // Explicit test flag for browser / extension test environments
+    globalThis.__swTestEnv__ === true ||
+    // Fallback for Node-based test runners like Jest
+    (typeof globalThis.process !== "undefined" &&
+      globalThis.process.env &&
+      globalThis.process.env.NODE_ENV === "test")
+  );
 if (isTestEnv && typeof globalThis !== "undefined") {
   globalThis.__swTestHooks__ = {
     isAllowed,

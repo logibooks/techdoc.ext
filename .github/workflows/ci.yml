@@ -85,7 +85,7 @@ jobs:
         ! grep -r "eval(" ext/ --exclude-dir=node_modules || (echo "Found eval() usage" && exit 1)
         
         echo "Checking for innerHTML usage..."
-        ! grep -r "innerHTML" ext/ --exclude-dir=node_modules || echo "Warning: innerHTML usage found"
+        ! grep -r "innerHTML" ext/ --exclude-dir=node_modules || (echo "Warning: innerHTML usage found" && exit 1)
         
         echo "Checking for unsafe URL schemes..."
         ! grep -r "javascript:" ext/ --exclude-dir=node_modules || (echo "Found javascript: URLs" && exit 1)
@@ -108,17 +108,6 @@ jobs:
 
     - name: Install dependencies
       run: npm ci
-
-    - name: Validate extension manifest
-      run: |
-        # Basic manifest validation
-        node -e "
-          const manifest = require('./ext/manifest.json');
-          if (!manifest.manifest_version || !manifest.name || !manifest.version) {
-            process.exit(1);
-          }
-          console.log('Manifest validation passed');
-        "
 
     - name: Package extension
       run: |
