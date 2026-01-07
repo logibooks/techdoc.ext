@@ -179,9 +179,11 @@ function ensurePanel() {
     // Use two animation frames to ensure the browser repaints after we
     // removed the overlay and hid the panel. This is more reliable than
     // a fixed short timeout which may be too short on some systems.
-    try {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
+    // Use guarded globalThis.requestAnimationFrame to satisfy linters
+    const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
+    if (raf) {
+      raf(() => {
+        raf(() => {
           try {
             chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
           } catch (err) {
@@ -189,7 +191,7 @@ function ensurePanel() {
           }
         });
       });
-    } catch (rafErr) {
+    } else {
       // Fallback to timeout in environments without RAF
       setTimeout(() => {
         try {
@@ -414,15 +416,16 @@ if (isTestEnv && typeof globalThis !== "undefined") {
       const rectToSend = selectedRect;
       try { cleanupOverlay(); } catch (e) {}
       togglePanel(false);
-      try {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
+      const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
+      if (raf) {
+        raf(() => {
+          raf(() => {
             try {
               chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
             } catch (err) {}
           });
         });
-      } catch (e) {
+      } else {
         setTimeout(() => {
           try { chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend }); } catch (err) {}
         }, 150);
