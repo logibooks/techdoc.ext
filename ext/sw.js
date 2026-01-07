@@ -444,8 +444,17 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-// Expose helpers for Jest without emitting real exports in production code.
-const isTestEnv = typeof globalThis !== "undefined" && globalThis.process?.env?.NODE_ENV === "test";
+// Expose helpers for Jest / browser-like tests without emitting real exports in production code.
+const isTestEnv =
+  typeof globalThis !== "undefined" &&
+  (
+    // Explicit test flag for browser / extension test environments
+    globalThis.__swTestEnv__ === true ||
+    // Fallback for Node-based test runners like Jest
+    (typeof globalThis.process !== "undefined" &&
+      globalThis.process.env &&
+      globalThis.process.env.NODE_ENV === "test")
+  );
 if (isTestEnv && typeof globalThis !== "undefined") {
   globalThis.__swTestHooks__ = {
     isAllowed,
