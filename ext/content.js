@@ -72,7 +72,7 @@ window.addEventListener("message", (event) => {
     }
 
     // Forward to background script which will:
-    // 1. Store these parameters in localStorage 
+    // 1. Store these parameters in local storage using Chrome API 
     // 2. Navigate to the target URL
     // 3. Restore UI state on the target page to show screenshot interface
     chrome.runtime.sendMessage({
