@@ -403,33 +403,29 @@ if (isTestEnv && typeof globalThis !== "undefined") {
   };
 
   // Expose selectedRect accessors for tests
-  if (typeof globalThis.__contentTestHooks__ !== "undefined") {
-    globalThis.__contentTestHooks__.getSelectedRect = () => selectedRect;
-    globalThis.__contentTestHooks__.setSelectedRect = (r) => { selectedRect = r; };
-  }
+  globalThis.__contentTestHooks__.getSelectedRect = () => selectedRect;
+  globalThis.__contentTestHooks__.setSelectedRect = (r) => { selectedRect = r; };
 
   // Test helper: trigger save flow (as if user clicked Save)
-  if (typeof globalThis.__contentTestHooks__ !== "undefined") {
-    globalThis.__contentTestHooks__.triggerSave = (rect) => {
-      if (rect) selectedRect = rect;
-      // run the same steps as saveButton click
-      const rectToSend = selectedRect;
-      try { cleanupOverlay(); } catch (e) {}
-      togglePanel(false);
-      const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
-      if (raf) {
+  globalThis.__contentTestHooks__.triggerSave = (rect) => {
+    if (rect) selectedRect = rect;
+    // run the same steps as saveButton click
+    const rectToSend = selectedRect;
+    try { cleanupOverlay(); } catch (e) {}
+    togglePanel(false);
+    const raf = typeof globalThis.requestAnimationFrame === "function" ? globalThis.requestAnimationFrame : null;
+    if (raf) {
+      raf(() => {
         raf(() => {
-          raf(() => {
-            try {
-              chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
-            } catch (err) {}
-          });
+          try {
+            chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend });
+          } catch (err) {}
         });
-      } else {
-        setTimeout(() => {
-          try { chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend }); } catch (err) {}
-        }, 150);
-      }
-    };
-  }
+      });
+    } else {
+      setTimeout(() => {
+        try { chrome.runtime.sendMessage({ type: "UI_SAVE", rect: rectToSend }); } catch (err) {}
+      }, 150);
+    }
+  };
 }
