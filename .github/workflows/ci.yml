@@ -86,7 +86,7 @@ jobs:
         ! grep -r "eval(" ext/ --exclude-dir=node_modules || (echo "Found eval() usage" && exit 1)
         
         echo "Checking for innerHTML usage..."
-        ! grep -r "innerHTML" ext/ --exclude-dir=node_modules || echo "Warning: innerHTML usage found"
+        ! grep -r "innerHTML" ext/ --exclude-dir=node_modules || (echo "Warning: innerHTML usage found" && exit 1)
         
         echo "Checking for unsafe URL schemes..."
         ! grep -r "javascript:" ext/ --exclude-dir=node_modules || (echo "Found javascript: URLs" && exit 1)
