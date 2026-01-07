@@ -53,7 +53,7 @@ jobs:
 #        fail_ci_if_error: true
 
  
-   security-scan:
+  security-scan:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
