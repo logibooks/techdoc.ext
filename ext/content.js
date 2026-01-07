@@ -141,17 +141,18 @@ function ensurePanel() {
   closeButton.addEventListener("click", () => {
     // Hide locally to avoid UI being stuck if the message fails.
     togglePanel(false);
+    cleanupSelection();
 
     try {
-      chrome.runtime.sendMessage({ type: "HIDE_UI" }, () => {
+      chrome.runtime.sendMessage({ type: "UI_CANCEL" }, () => {
         if (chrome.runtime.lastError) {
           // Log the error and ensure the panel stays hidden locally.
-          console.error("Failed to send HIDE_UI message:", chrome.runtime.lastError);
+          console.error("Failed to send UI_CANCEL message:", chrome.runtime.lastError);
           togglePanel(false);
         }
       });
     } catch (error) {
-      console.error("Exception while sending HIDE_UI message:", error);
+      console.error("Exception while sending UI_CANCEL message:", error);
       togglePanel(false);
     }
   });
@@ -208,16 +209,9 @@ function showError(message) {
   
   statusLabel.textContent = message || "Ошибка";
   saveButton.style.display = "none";
-  cancelButton.style.display = "none";
+  cancelButton.style.display = "inline-flex";
   togglePanel(true);
   cleanupSelection();
-  
-  // Auto-hide error after 5 seconds
-  setTimeout(() => {
-    if (uiState === "idle") {
-      togglePanel(false);
-    }
-  }, 5000);
 }
 
 function cleanupSelection() {
@@ -343,10 +337,6 @@ function startSelection() {
 chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "SHOW_UI") {
     showSelectionUI(msg.message);
-  }
-
-  if (msg?.type === "HIDE_UI") {
-    hideUI();
   }
 
   if (msg?.type === "SHOW_ERROR") {

@@ -21,13 +21,28 @@ const ALLOW_LIST = [
   "<all_urls>"
 ];
 
+// STATE MACHINE DOCUMENTATION
+// ===========================
+// Extension state transitions:
+//
+// "idle" → "navigating" → "awaiting_selection" → "uploading" → "idle"
+//                       ↘                      ↙
+//                         "idle" (on cancel/error)
+//
+// State Details:
+// - idle: Ready for new activation, no active session
+// - navigating: Navigating to target URL for screenshot
+// - awaiting_selection: On target page, waiting for user to select area
+// - uploading: Processing and uploading the selected screenshot
+// 
+// All error conditions and cancellations reset to "idle" state
 const state = {
-  status: "idle",
-  tabId: null,
-  returnUrl: null,
-  targetUrl: null,
-  target: null,
-  token: null
+  status: "idle",        // Current state: "idle" | "navigating" | "awaiting_selection" | "uploading"
+  tabId: null,           // Active tab ID for the current session
+  returnUrl: null,       // Original page URL to return to after screenshot
+  targetUrl: null,       // Target page URL where screenshot will be taken
+  target: null,          // Upload endpoint URL
+  token: null            // Authentication token for upload
 };
 
 let isUiVisible = false;
@@ -69,7 +84,8 @@ chrome.action.onClicked.addListener(async (tab) => {
         message: "Выберите область"
       });
     } else {
-      await chrome.tabs.sendMessage(tab.id, { type: "HIDE_UI" });
+      // Note: This path may not be needed for page-activated extension
+      // Consider removing action click handling entirely
     }
   } catch {
     // Tab may not have content script loaded; ignore messaging errors
@@ -80,6 +96,8 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   if (!msg?.type) return;
 
   if (msg.type === "PAGE_ACTIVATE") {
+    // STATE: idle → navigating
+    // Only accept new activations when idle to prevent concurrent sessions
     if (state.status !== "idle") return;
     const tabId = sender.tab?.id;
     if (tabId == null) return;
@@ -89,12 +107,16 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   }
 
   if (msg.type === "UI_SAVE") {
+    // STATE: awaiting_selection → uploading
+    // Only process save when waiting for selection on the correct tab
     if (state.status !== "awaiting_selection") return;
     if (sender.tab?.id !== state.tabId) return;
     void handleSave(msg.rect);
   }
 
   if (msg.type === "UI_CANCEL") {
+    // STATE: any → idle
+    // Cancel can happen from any state, always return to idle
     if (sender.tab?.id !== state.tabId) return;
     void handleCancel();
   }
@@ -103,13 +125,6 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     const tabId = sender.tab?.id;
     if (tabId == null) return;
     void syncUiState(tabId);
-  }
-
-  if (msg.type === "HIDE_UI") {
-    void (async () => {
-      await saveUiVisibility(false);
-      await broadcastUiVisibility();
-    })();
   }
 });
 
@@ -166,7 +181,10 @@ async function handleActivation(tabId, returnUrl, payload) {
 
 async function handleSave(rect) {
   try {
+    // STATE: awaiting_selection → uploading
+    // User selected area, now processing and uploading screenshot
     state.status = "uploading";
+    
     if (!state.tabId || !state.target) {
       throw new Error("Активная сессия не найдена");
     }
@@ -174,23 +192,30 @@ async function handleSave(rect) {
     const dataUrl = await chrome.tabs.captureVisibleTab(undefined, { format: "png" });
     const blob = await cropDataUrl(dataUrl, rect);
     await apiUpload(state.target, rect, blob);
+    
+    // STATE: uploading → idle (via finishSession)
     await finishSession();
   } catch (error) {
+    // STATE: uploading → idle (via reportError)
     await reportError(error, state.tabId);
   }
 }
 
 async function handleCancel() {
+  // STATE: any → idle (via finishSession)
+  // User cancelled, return to original page and reset
   await finishSession();
 }
 
 async function finishSession() {
+  // STATE: any → idle (via resetState)
+  // Clean up UI and navigate back to original page
   const { tabId, returnUrl } = state;
   await saveUiVisibility(false);
   if (tabId !== null && tabId !== undefined) {
     await sendMessageWithRetry(tabId, { type: "HIDE_UI" });
   }
-  await resetState();
+  await resetState();  // → idle state
   if (tabId !== null && tabId !== undefined && returnUrl) {
     try {
       await navigate(tabId, returnUrl);
@@ -201,6 +226,8 @@ async function finishSession() {
 }
 
 async function resetState() {
+  // STATE: any → idle
+  // Reset all session data to initial state
   state.status = "idle";
   state.tabId = null;
   state.returnUrl = null;
@@ -210,11 +237,14 @@ async function resetState() {
 }
 
 async function reportError(error, tabId) {
+  // STATE: any → idle
+  // Error occurred, show error message and reset all session data
   console.error(error);
   const message = error instanceof Error ? error.message : "Неизвестная ошибка";
   if (tabId !== null && tabId !== undefined) {
     await sendMessageWithRetry(tabId, { type: "SHOW_ERROR", message });
   }
+  // Reset to idle state directly (not via resetState to avoid duplication)
   state.status = "idle";
   state.tabId = null;
   state.returnUrl = null;
