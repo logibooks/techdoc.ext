@@ -72,25 +72,7 @@ async function saveUiVisibility(visible) {
 // Initialize on service worker startup
 initializeUiVisibility();
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab.id) return;
-  const newVisibility = !isUiVisible;
-  await saveUiVisibility(newVisibility);
-  
-  try {
-    if (newVisibility) {
-      await chrome.tabs.sendMessage(tab.id, { 
-        type: "SHOW_UI", 
-        message: "Выберите область"
-      });
-    } else {
-      // Note: This path may not be needed for page-activated extension
-      // Consider removing action click handling entirely
-    }
-  } catch {
-    // Tab may not have content script loaded; ignore messaging errors
-  }
-});
+
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (!msg?.type) return;
@@ -396,18 +378,21 @@ function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
 }
 
-// Exports for unit testing
-export {
-  isAllowed,
-  clamp,
-  delay,
-  sendMessageWithRetry,
-  sendMessageOnce,
-  loadImage,
-  cropDataUrl,
-  apiUpload,
-  navigate,
-  reportError,
-  resetState,
-  state
-};
+// Expose helpers for Jest without emitting real exports in production code.
+const isTestEnv = typeof process !== "undefined" && process.env?.NODE_ENV === "test";
+if (isTestEnv && typeof globalThis !== "undefined") {
+  globalThis.__swTestHooks__ = {
+    isAllowed,
+    clamp,
+    delay,
+    sendMessageWithRetry,
+    sendMessageOnce,
+    loadImage,
+    cropDataUrl,
+    apiUpload,
+    navigate,
+    reportError,
+    resetState,
+    state
+  };
+}

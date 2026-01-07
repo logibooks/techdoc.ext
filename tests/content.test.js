@@ -10,7 +10,9 @@ describe("Content script UI", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     // import module after mocks (setup.js provides document mocks)
-    content = await import("../ext/content.js");
+    await import("../ext/content.js");
+    content = globalThis.__contentTestHooks__;
+    if (!content) throw new Error("Content script test hooks were not registered");
   });
 
   it("ensurePanel creates elements and togglePanel shows/hides", () => {

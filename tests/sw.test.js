@@ -29,7 +29,9 @@ describe("Service worker helpers", () => {
       constructor() { this._pairs = []; }
       append(k, v, filename) { this._pairs.push([k, v, filename]); }
     };
-    sw = await import("../ext/sw.js");
+    await import("../ext/sw.js");
+    sw = globalThis.__swTestHooks__;
+    if (!sw) throw new Error("Service worker test hooks were not registered");
     // reset state between tests
     if (sw.resetState) sw.resetState();
   });
@@ -53,7 +55,8 @@ describe("Service worker helpers", () => {
       runtime: { lastError: null },
       tabs: { sendMessage: jest.fn((tabId, message, cb) => { called += 1; cb(); }) }
     };
-    sw = await import("../ext/sw.js");
+    await import("../ext/sw.js");
+    sw = globalThis.__swTestHooks__;
     const ok = await sw.sendMessageWithRetry(1, { type: "X" }, 2);
     expect(ok).toBe(true);
     expect(called).toBeGreaterThanOrEqual(1);
@@ -61,7 +64,8 @@ describe("Service worker helpers", () => {
 
   it("apiUpload throws on non-ok response", async () => {
     global.fetch = jest.fn(async () => ({ ok: false, status: 500 }));
-    sw = await import("../ext/sw.js");
+    await import("../ext/sw.js");
+    sw = globalThis.__swTestHooks__;
     await expect(sw.apiUpload("https://api.local/upload", { x: 0, y: 0, w: 10, h: 10 }, new Blob())).rejects.toThrow(
       /Ошибка POST/
     );
